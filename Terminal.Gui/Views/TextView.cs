@@ -728,6 +728,7 @@ namespace Terminal.Gui {
 		{
 			int restCount;
 			List<Rune> rest;
+			List<Rune> currentLine;
 
 			// Handle some state here - whether the last command was a kill
 			// operation and the column tracking (up/down)
@@ -792,56 +793,12 @@ namespace Terminal.Gui {
 
 			case Key.ControlF:
 			case Key.CursorRight:
-				var currentLine = GetCurrentLine ();
-				if (currentColumn < currentLine.Count) {
-					currentColumn++;
-					if (currentColumn >= leftColumn + Frame.Width) {
-						leftColumn++;
-						SetNeedsDisplay ();
-					}
-					PositionCursor ();
-				} else {
-					if (currentRow + 1 < model.Count) {
-						currentRow++;
-						currentColumn = 0;
-						leftColumn = 0;
-						if (currentRow >= topRow + Frame.Height) {
-							topRow++;
-						}
-						SetNeedsDisplay ();
-						PositionCursor ();
-					}
-					break;
-				}
+				MoveRight ();
 				break;
 
 			case Key.ControlB:
 			case Key.CursorLeft:
-				if (currentColumn > 0) {
-					currentColumn--;
-					if (currentColumn < leftColumn) {
-						leftColumn--;
-						SetNeedsDisplay ();
-					}
-					PositionCursor ();
-				} else {
-					if (currentRow > 0) {
-						currentRow--;
-						if (currentRow < topRow) {
-							topRow--;
-							SetNeedsDisplay ();
-						}
-						currentLine = GetCurrentLine ();
-						currentColumn = currentLine.Count;
-						int prev = leftColumn;
-						leftColumn = currentColumn - Frame.Width + 1;
-						if (leftColumn < 0)
-							leftColumn = 0;
-						if (prev != leftColumn)
-							SetNeedsDisplay ();
-						PositionCursor ();
-					}
-				}
+				MoveLeft ();
 				break;
 
 			case Key.Delete:
@@ -1042,7 +999,10 @@ namespace Terminal.Gui {
 			return true;
 		}
 
-		private void MoveUp ()
+		/// <summary>
+		/// Will move the cursor one row down.
+		/// </summary>
+		public void MoveUp ()
 		{
 			if (currentRow > 0) {
 				if (columnTrack == -1)
@@ -1057,7 +1017,10 @@ namespace Terminal.Gui {
 			}
 		}
 
-		private void MoveDown ()
+		/// <summary>
+		/// Will move the cursor one row down.
+		/// </summary>
+		public void MoveDown ()
 		{
 			if (currentRow + 1 < model.Count) {
 				if (columnTrack == -1)
@@ -1069,6 +1032,97 @@ namespace Terminal.Gui {
 				}
 				TrackColumn ();
 				PositionCursor ();
+			}
+		}
+
+		/// <summary>
+		/// Will move the cursor one position to the right.
+		/// </summary>
+		/// <remarks>
+		/// This moves the cursor one position to the right.  If the cursor is at the end of the
+		/// line it will proceed to the next line if it exists.
+		/// </remarks>
+		public void MoveRight ()
+		{
+			MoveRight (true);
+		}
+
+		/// <summary>
+		/// Will move the cursor one position to the right.
+		/// </summary>
+		/// <param name="moveLineIfEol">
+		/// Whether or not the cursor should be advanced to the beginning of the next line
+		/// when the cursor is at the end of the current line.
+		/// </param>
+		public void MoveRight(bool moveLineIfEol)
+		{
+			var currentLine = GetCurrentLine ();
+			if (currentColumn < currentLine.Count) {
+				currentColumn++;
+				if (currentColumn >= leftColumn + Frame.Width) {
+					leftColumn++;
+					SetNeedsDisplay ();
+				}
+				PositionCursor ();
+			} else {
+				if (moveLineIfEol && currentRow + 1 < model.Count) {
+					currentRow++;
+					currentColumn = 0;
+					leftColumn = 0;
+					if (currentRow >= topRow + Frame.Height) {
+						topRow++;
+					}
+					SetNeedsDisplay ();
+					PositionCursor ();
+				}
+			}
+		}
+
+		/// <summary>
+		/// Will move the cursor one position to the left.
+		/// </summary>
+		/// <remarks>
+		/// This moves the cursor one position to the left.  If the cursor is at the beginning of
+		/// the line it will move to the end position of the previous line if it exists.
+		/// </remarks>
+		public void MoveLeft ()
+		{
+			MoveLeft (true);
+		}
+
+		/// <summary>
+		/// Will move the cursor one position to the left.
+		/// </summary>
+		/// <param name="moveLineIfBol">
+		/// Whether or not the cursor should be moved to the end of the previous line when
+		/// the cursor is at the start of the current line.
+		/// </param>
+		public void MoveLeft (bool moveLineIfBol)
+		{
+			if (currentColumn > 0) {
+				currentColumn--;
+				if (currentColumn < leftColumn) {
+					leftColumn--;
+					SetNeedsDisplay ();
+				}
+				PositionCursor ();
+			} else {
+				if (moveLineIfBol && currentRow > 0) {
+					currentRow--;
+					if (currentRow < topRow) {
+						topRow--;
+						SetNeedsDisplay ();
+					}
+					var currentLine = GetCurrentLine ();
+					currentColumn = currentLine.Count;
+					int prev = leftColumn;
+					leftColumn = currentColumn - Frame.Width + 1;
+					if (leftColumn < 0)
+						leftColumn = 0;
+					if (prev != leftColumn)
+						SetNeedsDisplay ();
+					PositionCursor ();
+				}
 			}
 		}
 
